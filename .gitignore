@@ -1,0 +1,21 @@
+# Personal / secret local files
+personal-data/
+*.pdf
+.env
+.env.*
+!.env.example
+
+# Dependencies & build
+node_modules/
+dist/
+build/
+coverage/
+.next/
+.turbo/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
