@@ -1,0 +1,8 @@
+{
+    "name": "joobtIA",
+    "private": true,
+    "scripts": {
+      "dev:backend": "pnpm --filter api start:dev",
+      "dev:frontend": "pnpm --filter web dev"
+    }
+  }
