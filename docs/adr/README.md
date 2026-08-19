@@ -22,4 +22,5 @@ Copy `_template.md` when opening a new ADR.
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| — | *(none yet — first ADR after requirements kickoff)* | — |
+| [0001](0001-manual-job-intake-only.md) | Manual job intake only (product pivot) | accepted |
+| [0002](0002-nestjs-typescript-stack.md) | NestJS + TypeScript as the implementation stack | accepted |

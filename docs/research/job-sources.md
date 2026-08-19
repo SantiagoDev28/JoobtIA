@@ -1,189 +1,92 @@
 # Investigación: fuentes de vacantes
 
-**Versión:** 0.1  
+**Versión:** 0.2  
 **Fecha:** 2026-08-03  
-**Relacionado:** `docs/vision.md`  
-**Propósito:** Decidir cómo el agente puede recopilar vacantes sin bloquear el MVP ni asumir riesgo legal innecesario.
+**Relacionado:** `docs/vision.md` v0.2  
+**Estado de la decisión:** **No automatizar la recolección.** Este documento conserva el análisis técnico y registra el pivote de producto.
 
 ---
 
-## 1. Resumen ejecutivo
+## 1. Decisión de producto (v0.2)
 
-| Plataforma | ¿API pública para *buscar* vacantes? | Scraping | Recomendación MVP |
-|------------|--------------------------------------|----------|-------------------|
-| **LinkedIn** | No (solo API de *publicar* para partners ATS) | Viola ToS; rate limits; riesgo de cuenta/legal | **No automatizar.** Ingesta manual (pegar URL/texto) |
-| **Indeed** | No (Publisher/Job Search API cerrada/deprecada; APIs actuales son partner/empleador) | Anti-bot fuerte; ToS | **No automatizar al inicio.** Manual o proveedor de pago más adelante |
-| **Computrabajo** | API partner `iapi` orientada a *empleadores* (publicar avisos), no a candidatos | Scrapers de terceros (Apify, etc.) | **Fase B:** evaluar scraper controlado o pegado manual; no base del día 1 |
-| **Remotive / RemoteOK / Arbeitnow** | Sí, feeds JSON públicos (sin key o con límites leves) | No necesario | **Fase A — sí.** Buenas para remoto / software |
-| **Adzuna** | Sí, API free con key; ~18 países (fuerte UK/EU; **no Colombia**) | N/A | Opcional si se buscan mercados Adzuna |
+JoobtIA **no** incluye connectors, scrapers ni agentes que lean portales de empleo de forma automatizada.
 
-**Conclusión para el MVP “usable lo antes posible”:**  
-Arquitectura de **ingesta pluggable** + **dos caminos día 1**:
+**Motivos:**
 
-1. **Manual / semi-manual:** usuario pega URL o texto de LinkedIn, Computrabajo, Indeed, etc.  
-2. **Connectors legales:** Remotive (+ RemoteOK / Arbeitnow) para vacantes remote/software.
+1. LinkedIn, Indeed y Computrabajo no ofrecen APIs públicas adecuadas para *buscar/leer* vacantes como candidato; lo automatizable choca con ToS o es partner-only.  
+2. El riesgo legal/operativo no aporta al objetivo real: conseguir empleo y construir un portfolio sólido.  
+3. La propuesta de valor se desplaza a **CRM + IA de preparación** (fit, CV, carta, entrevistas, stats, plan de estudio).
 
-El “agente que recorre LinkedIn solo” **no** es viable como cimiento del MVP.
+**Cómo entran las vacantes:** el usuario las pega o registra manualmente (texto, URL como referencia, notas, archivo). Opcional futuro: bookmarklet “guardar en JoobtIA” que solo envía lo que el usuario ya tiene abierto — sin crawl del sitio.
 
 ---
 
-## 2. LinkedIn
+## 2. Resumen del landscape (referencia histórica)
 
-### Qué existe oficialmente
+| Plataforma | ¿API pública para *buscar*? | Scraping | Conclusión |
+|------------|----------------------------|----------|------------|
+| LinkedIn | No (API de publicar para partners) | Viola ToS; frágil; riesgo de cuenta | Solo manual |
+| Indeed | No (APIs employer/partner) | Anti-bot + ToS | Solo manual |
+| Computrabajo | Partner/empleador (`iapi`), no feed candidato | Scrapers terceros | Solo manual |
+| Remotive / RemoteOK / Arbeitnow | Feeds JSON públicos | N/A | **Viable técnicamente**, pero **fuera de alcance** del producto v0.2 para no mezclar “agregador” con “copiloto” |
+| Adzuna | API free limitada; sin Colombia | N/A | Fuera de alcance v0.2 |
 
-- **Job Posting API:** write-only para partners ATS / Talent Solutions (publicar y sincronizar ofertas *hacia* LinkedIn).  
-- **No hay** API self-serve para *buscar o leer* listados de empleo.  
-- Programas partner cerrados o muy selectivos; extracción de datos no es un use case aprobado.
+Incluso las APIs “limpias” (Remotive, etc.) se **excluyen del MVP** a propósito: refuerzan la historia de que el valor no está en cazar vacantes, sino en trabajarlas bien.
 
-### Scraping / “APIs no oficiales”
-
-- Páginas públicas y endpoints guest existen en la práctica, pero:
-  - Violan términos de LinkedIn
-  - Hay rate limiting agresivo (~pocas páginas por IP)
-  - LinkedIn ha litigado contra recolectores comerciales (ej. casos conocidos en 2025)
-- Terceros que venden “LinkedIn Jobs API” suelen ser scrapers envueltos; frágiles y de alto riesgo.
-
-### Implicación JoobtIA
-
-Para portfolio + uso personal: **el usuario copia el texto o la URL de la oferta**; el backend normaliza y pasa al pipeline de scoring. Un bookmarklet o extensión “Enviar a JoobtIA” puede ser fase temprana sin scrapear el sitio a escala.
+Si en el futuro se reabre un connector Remotive, requiere **nuevo ADR** y no debe ser el núcleo del producto.
 
 ---
 
-## 3. Indeed
+## 3. Hallazgos breves por plataforma
 
-### Qué existe oficialmente
+### LinkedIn
 
-- La **Publisher / Job Search API** pública ya no está disponible para nuevos desarrolladores (deprecación ~2021–2024 según fuentes).  
-- APIs actuales (Job Sync, Apply, etc.) son para **empleadores y partners**, no para “dame vacantes junior en Bogotá”.  
-- Widget embebido de publisher ≠ acceso a JSON de resultados.
+- Job Posting API = write para ATS partners.  
+- No hay search API self-serve.  
+- Scrapers / “APIs no oficiales” = ToS + enforcement.
 
-### Scraping
+### Indeed
 
-- Indeed usa protecciones anti-bot fuertes (Cloudflare y similares).  
-- Scraping es frágil, costoso (proxies) y contra ToS.  
-- Servicios tipo Bright Data / Apify existen, pero añaden costo y deuda operativa.
+- Publisher/Job Search públicos deprecados o cerrados.  
+- APIs actuales orientadas a empleadores/partners.  
+- Scraping costoso y frágil.
 
-### Implicación JoobtIA
+### Computrabajo
 
-Misma estrategia que LinkedIn en MVP: **ingesta manual**. Un connector Indeed solo se reevalúa con ADR si el volumen manual se vuelve el cuello de botella.
+- API histórica de publicación de avisos (empleador).  
+- Scrapers LatAm existen (p. ej. Apify) — útiles en teoría, indeseables para este proyecto.
 
----
+### Remotive / RemoteOK / Arbeitnow
 
-## 4. Computrabajo (LatAm / Colombia)
-
-### Oficial
-
-- Existe documentación/comunidad alrededor de `iapi.computrabajo.com` orientada a **empresas que publican** avisos (crear/consultar publicaciones propias), no a un feed abierto de búsqueda para candidatos.  
-- Acceso típico: credenciales partner / acuerdo comercial.
-
-### No oficial
-
-- Actores en Apify y repos de scrapers extraen título, empresa, salario, ubicación, descripción, URL, etc.  
-- Útiles para LatAm, pero: dependencia de terceros, HTML que cambia, posible conflicto con ToS, costo.
-
-### Implicación JoobtIA
-
-Alta relevancia geográfica (Bogotá/CO). Prioridad:
-
-1. MVP: pegar oferta desde Computrabajo  
-2. Post-MVP / Fase B: ADR “Computrabajo connector” evaluando Apify vs. fetch propio de bajo volumen solo para uso personal
+- JSON público; buenos para un agregador remoto.  
+- **No usados** en JoobtIA v0.2 por decisión de posicionamiento, no solo por legalidad.
 
 ---
 
-## 5. Fuentes recomendadas para automatización temprana
-
-### Remotive
-
-- `GET https://remotive.com/api/remote-jobs`  
-- Filtros: `category` (ej. `software-dev`), `search`, `limit`  
-- Sin API key; atribución y ToS del publisher a respetar  
-
-### RemoteOK
-
-- `GET https://remoteok.com/api`  
-- Requiere `User-Agent`; el primer elemento del array suele ser aviso legal  
-- Cuidado: tags ruidosos — filtrar por título/descripción, no solo tags  
-
-### Arbeitnow
-
-- API de job board gratuita (documentada; a menudo vía su sitio / RapidAPI)  
-- Mezcla remote y on-site (Europa); filtrar por `remote` y keywords junior/dev  
-
-### Adzuna (opcional)
-
-- Free tier con `app_id` / `app_key`  
-- Cobertura limitada a países Adzuna; **no sustituye** Computrabajo en Colombia  
-
----
-
-## 6. Estrategia de producto recomendada
+## 4. Implicación para arquitectura
 
 ```text
-                    ┌─────────────────────┐
-                    │   Job Ingestion     │
-                    │   (NestJS module)   │
-                    └──────────┬──────────┘
-           ┌───────────────────┼───────────────────┐
-           ▼                   ▼                   ▼
-   ManualIngest          PublicApiIngest      FutureScrapers
-   (URL / paste)         (Remotive, …)        (ADR required)
-           │                   │                   │
-           └───────────────────┴───────────────────┘
-                               ▼
-                      Normalized Job schema
-                               ▼
-                      Score → Draft → Track
+Usuario encuentra oferta en cualquier portal
+        │
+        ▼
+   Alta manual en CRM  (texto / URL / metadatos)
+        │
+        ▼
+   Job record normalizado
+        │
+        ├── Compatibility (LangChain)
+        ├── CV optimize
+        ├── Cover letter
+        ├── Interview prep
+        ├── Stats (agregado)
+        └── Study plan (skills frecuentes en jobs guardados)
 ```
 
-### Fase A (MVP — máximo 1–2 sprints de ingesta)
-
-- [x] Contrato interno `JobSource` (interface)  
-- [ ] `ManualJobSource` (texto + URL + metadatos)  
-- [ ] `RemotiveJobSource` (+ opcional RemoteOK)  
-- [ ] Deduplicación por URL / hash de título+empresa  
-- [ ] Filtro heurístico: “junior” / “jr” / “trainee” / “entry” + keywords stack  
-
-### Fase B (solo si hace falta volumen LatAm)
-
-- ADR: Computrabajo via Apify o scraper propio de bajo volumen  
-- Bookmarklet “Send to JoobtIA” para LinkedIn/Indeed/Computrabajo  
-
-### Fase C (explícitamente no ahora)
-
-- Agente headless que inicia sesión en LinkedIn  
-- Compra de datasets comerciales a gran escala  
+No hay módulo `JobSource` de terceros en el MVP. La “fuente” es el usuario.
 
 ---
 
-## 7. Riesgos y mitigaciones
+## 5. ADR relacionado
 
-| Riesgo | Impacto | Mitigación |
-|--------|---------|------------|
-| Bloqueo de cuenta LinkedIn | Alto (búsqueda personal) | Sin automatización de LinkedIn |
-| ToS / legal | Medio–alto en scrapers | Preferir manual + APIs públicas; ADR por fuente |
-| Pocas vacantes junior CO en Remotive | Medio | Manual desde Computrabajo/LinkedIn + remote global |
-| Fragilidad de scrapers | Alto mantenimiento | No acoplar el core al scraper |
-| Tags falsos (RemoteOK) | Scores malos | Matching por título/descripción + LLM |
-
----
-
-## 8. Decisión provisional (a formalizar en ADR)
-
-**ADR candidato:** *Job sourcing strategy for MVP*
-
-- **Accepted direction:** hybrid ingestion; manual + public remote APIs first.  
-- **Rejected for MVP:** automated LinkedIn/Indeed scraping as primary source.  
-- **Deferred:** Computrabajo automated connector pending volume needs.
-
-Próximo paso documental: volcar esto en `docs/adr/0001-job-sourcing-strategy.md` cuando se abran los ADRs formales.
-
----
-
-## 9. Referencias (consulta 2026-08)
-
-- Indeed Partner Docs — Job Sync / auth (employer-side)  
-- Análisis de ecosistema LinkedIn Jobs API 2025–2026 (partner write-only; no search self-serve)  
-- Remotive Remote Jobs API — `https://remotive.com/api/remote-jobs`  
-- RemoteOK API — `https://remoteok.com/api`  
-- Computrabajo scrapers (Apify) y gem histórico `iapi.computrabajo.com` (empleadores)  
-- Adzuna Developer — cobertura limitada de países, free tier con rate limits  
+Formalizar en `docs/adr/0001-manual-job-intake-only.md` (o título equivalente):  
+**Accepted — manual intake only; automated portal collection rejected for this product.**
